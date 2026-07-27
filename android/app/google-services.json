@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "763750370551",
+    "project_id": "khk-cricket-academy",
+    "storage_bucket": "khk-cricket-academy.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:763750370551:android:74962e1518f00e9dfd17f2",
+        "android_client_info": {
+          "package_name": "com.khkcricket.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCHAQ6CxGCGKKn9GxQB5YEN-_aIN-45KhQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
