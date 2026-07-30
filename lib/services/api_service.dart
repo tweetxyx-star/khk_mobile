@@ -38,36 +38,46 @@ class ApiService {
   static Future<bool> isLoggedIn() async {
     final token = await _getToken();
     final loggedIn = token != null && token.isNotEmpty;
-    if (kDebugMode) debugPrint('🔒 [ApiService] isLoggedIn() → $loggedIn');
+    if (kDebugMode) {
+      debugPrint('🔒 [ApiService] isLoggedIn() → $loggedIn');
+    }
     return loggedIn;
   }
 
   static Future<void> _saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(tokenKey, token);
-    if (kDebugMode) debugPrint('✅ [ApiService] _saveToken() → Token saved');
+    if (kDebugMode) {
+      debugPrint('✅ [ApiService] _saveToken() → Token saved');
+    }
   }
 
   static Future<void> _saveUser(Map<String, dynamic> user) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(userKey, jsonEncode(user));
-    if (kDebugMode)
+    if (kDebugMode) {
       debugPrint(
         '✅ [ApiService] _saveUser() → ${user['name']} (ID: ${user['id']})',
       );
+    }
   }
 
   static Future<Map<String, dynamic>?> getCachedUser() async {
     final prefs = await SharedPreferences.getInstance();
     final userJson = prefs.getString(userKey);
-    return userJson != null ? jsonDecode(userJson) : null;
+    if (userJson != null) {
+      return jsonDecode(userJson) as Map<String, dynamic>;
+    }
+    return null;
   }
 
   static Future<void> clearToken() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(tokenKey);
     await prefs.remove(userKey);
-    if (kDebugMode) debugPrint('🗑 [ApiService] clearToken() → Cleared');
+    if (kDebugMode) {
+      debugPrint('🗑 [ApiService] clearToken() → Cleared');
+    }
   }
 
   static Future<Map<String, String>> _headers() async {
@@ -76,12 +86,13 @@ class ApiService {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
       'User-Agent': 'KHKCricket/1.0 Mobile',
-      if (token != null) 'Authorization': 'Bearer $token',
+      if (token case final String token) 'Authorization': 'Bearer $token',
     };
-    if (kDebugMode)
+    if (kDebugMode) {
       debugPrint(
         '📋 [ApiService] Headers → ${token != null ? "Bearer AUTH" : "NO AUTH"}',
       );
+    }
     return headers;
   }
 
@@ -89,7 +100,9 @@ class ApiService {
     try {
       final headers = await _headers();
       final url = '$baseUrl$endpoint';
-      if (kDebugMode) debugPrint('⬆ [ApiService] GET: $url');
+      if (kDebugMode) {
+        debugPrint('⬆ [ApiService] GET: $url');
+      }
       final response = await http
           .get(Uri.parse(url), headers: headers)
           .timeout(const Duration(seconds: 15));
@@ -105,7 +118,9 @@ class ApiService {
       }
       return _handleResponse(response, endpoint);
     } catch (e) {
-      if (kDebugMode) debugPrint('❌ [ApiService] Network error: $e');
+      if (kDebugMode) {
+        debugPrint('❌ [ApiService] Network error: $e');
+      }
       throw Exception('Network error: ${e.toString()}');
     }
   }
@@ -130,21 +145,27 @@ class ApiService {
       }
       return _handleResponse(response, endpoint);
     } catch (e) {
-      if (kDebugMode) debugPrint('❌ [ApiService] Network error: $e');
+      if (kDebugMode) {
+        debugPrint('❌ [ApiService] Network error: $e');
+      }
       throw Exception('Network error: ${e.toString()}');
     }
   }
 
   static dynamic _handleResponse(http.Response response, String endpoint) {
     final body = response.body.isNotEmpty ? jsonDecode(response.body) : {};
-    if (response.statusCode >= 200 && response.statusCode < 300) return body;
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return body;
+    }
     if (response.statusCode == 401) {
       if (endpoint == '/user' ||
           endpoint == '/login' ||
           endpoint == '/verify-login') {
         clearToken();
       }
-      if (kDebugMode) debugPrint('⚠ 401 on $endpoint -> ${response.body}');
+      if (kDebugMode) {
+        debugPrint('⚠ 401 on $endpoint -> ${response.body}');
+      }
       throw Exception('Session expired on $endpoint. Please login again.');
     } else if (response.statusCode == 403) {
       final error = body['error'] ?? body['message'] ?? 'Forbidden';
@@ -183,19 +204,26 @@ class ApiService {
   }
 
   static Future<List<Package>> getPackages() async {
-    if (kDebugMode) debugPrint('🎫 [ApiService] getPackages() → Fetching');
+    if (kDebugMode) {
+      debugPrint('🎫 [ApiService] getPackages() → Fetching');
+    }
     final data = await get('/packages');
     final packages = (data as List).map((e) => Package.fromJson(e)).toList();
-    if (kDebugMode)
+    if (kDebugMode) {
       debugPrint('✅ [ApiService] getPackages() → ${packages.length} packages');
+    }
     return packages;
   }
 
   static Future<List<dynamic>> getPackagesRaw() async {
     try {
       final data = await get('/packages');
-      if (data is List) return data;
-      if (data is Map && data['data'] is List) return data['data'] as List;
+      if (data is List) {
+        return data;
+      }
+      if (data is Map && data['data'] is List) {
+        return data['data'] as List;
+      }
       return [];
     } catch (e) {
       return [];
@@ -305,7 +333,9 @@ class ApiService {
     final qp = StringBuffer(
       '/membership-availability?date=$date&user_package_id=$userPackageId',
     );
-    if (netId != null) qp.write('&net_id=$netId');
+    if (netId != null) {
+      qp.write('&net_id=$netId');
+    }
     return await get(qp.toString()) as Map<String, dynamic>;
   }
 
@@ -332,7 +362,7 @@ class ApiService {
       'name': name,
       'mobile': mobile,
       'country_code': countryCode,
-      if (email != null && email.isNotEmpty) 'email': email,
+      if (email case final String email when email.isNotEmpty) 'email': email,
       'password': password,
     });
   }
@@ -347,11 +377,14 @@ class ApiService {
       'mobile': mobile,
       'otp': otp,
     });
-    if (data['token'] != null)
+    if (data['token'] != null) {
       await _saveToken(data['token']);
-    else
+    } else {
       throw Exception('No token received from server');
-    if (data['user'] != null) await _saveUser(data['user']);
+    }
+    if (data['user'] != null) {
+      await _saveUser(data['user']);
+    }
     return data;
   }
 
@@ -363,11 +396,13 @@ class ApiService {
     final data = await post('/login', {
       'country_code': countryCode,
       'mobile': mobile,
-      if (password != null) 'password': password,
+      if (password case final String password) 'password': password,
     });
     if (data['token'] != null) {
       await _saveToken(data['token']);
-      if (data['user'] != null) await _saveUser(data['user']);
+      if (data['user'] != null) {
+        await _saveUser(data['user']);
+      }
     }
     return data;
   }
@@ -382,11 +417,14 @@ class ApiService {
       'mobile': mobile,
       'otp': otp,
     });
-    if (data['token'] != null)
+    if (data['token'] != null) {
       await _saveToken(data['token']);
-    else
+    } else {
       throw Exception('No token received from server');
-    if (data['user'] != null) await _saveUser(data['user']);
+    }
+    if (data['user'] != null) {
+      await _saveUser(data['user']);
+    }
     return data;
   }
 
@@ -404,7 +442,9 @@ class ApiService {
 
   static Future<Map<String, dynamic>> getUser() async {
     final cachedUser = await getCachedUser();
-    if (cachedUser != null) return cachedUser;
+    if (cachedUser != null) {
+      return cachedUser;
+    }
     final data = await get('/user');
     await _saveUser(data);
     return data;
@@ -417,6 +457,31 @@ class ApiService {
       // ignore
     } finally {
       await clearToken();
+    }
+  }
+
+  static Future<Map<String, dynamic>> deleteAccount() async {
+    try {
+      final headers = await _headers();
+      final url = '$baseUrl/user/delete';
+      if (kDebugMode) {
+        debugPrint('⬆ [ApiService] DELETE: $url');
+      }
+      final response = await http
+          .delete(Uri.parse(url), headers: headers)
+          .timeout(const Duration(seconds: 15));
+      if (kDebugMode) {
+        debugPrint('⬇ [ApiService] Delete Response ${response.statusCode}');
+        debugPrint('⬇ [ApiService] Body: ${response.body}');
+      }
+      final result = _handleResponse(response, '/user/delete');
+      await clearToken();
+      return result as Map<String, dynamic>;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ [ApiService] deleteAccount error: $e');
+      }
+      rethrow;
     }
   }
 
@@ -455,65 +520,92 @@ class ApiService {
       'booking_date': date,
       'start_time': startTime,
       'end_time': endTime,
-      if (facilityIds != null && facilityIds.isNotEmpty)
+      if (facilityIds case final List<int> facilityIds
+          when facilityIds.isNotEmpty)
         'facility_ids': facilityIds,
-      if (coachId != null) 'coach_id': coachId,
+      if (coachId case final int coachId) 'coach_id': coachId,
       'payment_method': paymentMethod ?? 'cash',
       'total_price': totalPrice,
-      if (paymentIntentId != null) 'payment_intent_id': paymentIntentId,
+      if (paymentIntentId case final String paymentIntentId)
+        'payment_intent_id': paymentIntentId,
     });
   }
 
-  static Future<Map<String, dynamic>> cancelBooking(int bookingId) async =>
-      await post('/bookings/$bookingId/cancel', {});
-  static Future<Map<String, dynamic>> rescheduleBooking(int bookingId) async =>
-      await post('/bookings/$bookingId/reschedule', {});
+  static Future<Map<String, dynamic>> cancelBooking(int bookingId) async {
+    return await post('/bookings/$bookingId/cancel', {});
+  }
 
-  // ============================================================
-  // MEMBERSHIP PACKAGES - FIXED
-  // ============================================================
+  static Future<Map<String, dynamic>> rescheduleBooking(int bookingId) async {
+    return await post('/bookings/$bookingId/reschedule', {});
+  }
 
   static Future<List<dynamic>> getMembershipPackages() async {
-    if (kDebugMode)
+    if (kDebugMode) {
       debugPrint(
         '🎫 [ApiService] getMembershipPackages() → /membership-packages',
       );
+    }
     final data = await get('/membership-packages');
-    if (kDebugMode) debugPrint('🎫 RAW membership-packages: $data');
-    if (data is List) return data;
+    if (kDebugMode) {
+      debugPrint('🎫 RAW membership-packages: $data');
+    }
+    if (data is List) {
+      return data;
+    }
     if (data is Map) {
-      if (data['data'] is List) return data['data'] as List;
-      if (data['packages'] is List) return data['packages'] as List;
+      if (data['data'] is List) {
+        return data['data'] as List;
+      }
+      if (data['packages'] is List) {
+        return data['packages'] as List;
+      }
     }
     throw Exception('Unexpected format from /membership-packages: $data');
   }
 
-  static Future<List<dynamic>> getMembershipStore() async =>
-      getMembershipPackages();
+  static Future<List<dynamic>> getMembershipStore() async {
+    return getMembershipPackages();
+  }
 
   static Future<List<dynamic>> getMyMemberships() async {
-    if (kDebugMode)
+    if (kDebugMode) {
       debugPrint('🎫 [ApiService] getMyMemberships() → /user-packages/my');
+    }
     final data = await get('/user-packages/my');
-    if (kDebugMode) debugPrint('🎫 RAW my memberships: $data');
-    if (data is List) return data;
-    if (data is Map && data['data'] is List) return data['data'] as List;
-    if (data is Map && data['memberships'] is List)
+    if (kDebugMode) {
+      debugPrint('🎫 RAW my memberships: $data');
+    }
+    if (data is List) {
+      return data;
+    }
+    if (data is Map && data['data'] is List) {
+      return data['data'] as List;
+    }
+    if (data is Map && data['memberships'] is List) {
       return data['memberships'] as List;
+    }
     return [];
   }
 
   static Future<List<dynamic>> getMembershipBookings(int userPackageId) async {
     try {
       final data = await get('/user-packages/$userPackageId/bookings');
-      if (data is List) return data;
-      if (data is Map && data['data'] is List) return data['data'] as List;
+      if (data is List) {
+        return data;
+      }
+      if (data is Map && data['data'] is List) {
+        return data['data'] as List;
+      }
       return [];
     } catch (e) {
       try {
         final data = await get('/membership-bookings/$userPackageId');
-        if (data is List) return data;
-        if (data is Map && data['data'] is List) return data['data'] as List;
+        if (data is List) {
+          return data;
+        }
+        if (data is Map && data['data'] is List) {
+          return data['data'] as List;
+        }
       } catch (_) {}
       return [];
     }
@@ -547,7 +639,8 @@ class ApiService {
     String? paymentIntentId,
   }) async {
     return await post('/user-packages/$userPackageId/confirm-payment', {
-      if (paymentIntentId != null) 'payment_intent_id': paymentIntentId,
+      if (paymentIntentId case final String paymentIntentId)
+        'payment_intent_id': paymentIntentId,
     });
   }
 
@@ -558,35 +651,49 @@ class ApiService {
   }) async {
     return await post('/user-packages/activate', {
       'membership_package_id': membershipPackageId,
-      if (paymentIntentId != null) 'payment_intent_id': paymentIntentId,
-      if (paymentReceiptPath != null)
+      if (paymentIntentId case final String paymentIntentId)
+        'payment_intent_id': paymentIntentId,
+      if (paymentReceiptPath case final String paymentReceiptPath)
         'payment_receipt_path': paymentReceiptPath,
     });
   }
 
   static Future<Map<String, dynamic>> purchaseMembership(int packageId) async {
-    if (kDebugMode)
+    if (kDebugMode) {
       debugPrint('💳 purchaseMembership $packageId -> /user-packages/purchase');
+    }
     return await post('/user-packages/purchase', {
       'membership_package_id': packageId,
       'payment_method': 'benefit_pay',
     });
   }
 
-  static Future<Map<String, dynamic>> buyMembership(int packageId) async =>
-      purchaseMembership(packageId);
+  static Future<Map<String, dynamic>> buyMembership(int packageId) async {
+    return purchaseMembership(packageId);
+  }
+
   static Future<Map<String, dynamic>> purchasePackage({
     required int packageId,
     String paymentMethod = 'benefit_pay',
-  }) async => purchaseMembership(packageId);
-  static Future<Map<String, dynamic>> buyPackage(int packageId) async =>
-      purchaseMembership(packageId);
+  }) async {
+    return purchaseMembership(packageId);
+  }
+
+  static Future<Map<String, dynamic>> buyPackage(int packageId) async {
+    return purchaseMembership(packageId);
+  }
+
   static Future<Map<String, dynamic>> purchaseCorporateMembership({
     required int packageId,
-  }) async => purchaseMembership(packageId);
+  }) async {
+    return purchaseMembership(packageId);
+  }
+
   static Future<Map<String, dynamic>> purchaseIndividualMembership({
     required int packageId,
-  }) async => purchaseMembership(packageId);
+  }) async {
+    return purchaseMembership(packageId);
+  }
 
   static Future<Map<String, dynamic>> uploadMembershipReceipt({
     required int userPackageId,
@@ -598,7 +705,9 @@ class ApiService {
       var request = http.MultipartRequest('POST', Uri.parse(url));
       request.headers['Accept'] = 'application/json';
       request.headers['User-Agent'] = 'KHKCricket/1.0 Mobile';
-      if (token != null) request.headers['Authorization'] = 'Bearer $token';
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
       request.files.add(await http.MultipartFile.fromPath('receipt', filePath));
       final streamed = await request.send().timeout(
         const Duration(seconds: 30),
@@ -636,21 +745,24 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> renewMembership(
-    int userPackageId,
-  ) async => await post('/user-packages/$userPackageId/renew', {});
-
-  // ============================================================
-  // LIVE STREAMS - NEW (YouTube Live)
-  // ============================================================
+  static Future<Map<String, dynamic>> renewMembership(int userPackageId) async {
+    return await post('/user-packages/$userPackageId/renew', {});
+  }
 
   static Future<List<dynamic>> getLiveStreams() async {
-    if (kDebugMode)
+    if (kDebugMode) {
       debugPrint('📺 [ApiService] getLiveStreams() → /live-streams');
+    }
     final data = await get('/live-streams');
-    if (data is List) return data;
-    if (data is Map && data['data'] is List) return data['data'] as List;
-    if (data is Map && data['streams'] is List) return data['streams'] as List;
+    if (data is List) {
+      return data;
+    }
+    if (data is Map && data['data'] is List) {
+      return data['data'] as List;
+    }
+    if (data is Map && data['streams'] is List) {
+      return data['streams'] as List;
+    }
     return [];
   }
 
@@ -667,8 +779,8 @@ class ApiService {
   }) async {
     return await post('/admin/live-streams', {
           'youtube_url': youtubeUrl,
-          if (title != null) 'title': title,
-          if (netName != null) 'net_name': netName,
+          if (title case final String title) 'title': title,
+          if (netName case final String netName) 'net_name': netName,
           'status': status,
         })
         as Map<String, dynamic>;

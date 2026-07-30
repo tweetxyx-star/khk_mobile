@@ -22,6 +22,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   bool _isLoading = true;
   bool _isLoggedIn = false;
   List<dynamic> _subscriptions = [];
+  bool _isDeleting = false;
 
   late AnimationController _bgController;
   late AnimationController _fadeController;
@@ -158,6 +159,131 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
+  // --- NEW: DELETE ACCOUNT FOR APPLE 5.1.1(v) ---
+  Future<void> _handleDeleteAccount() async {
+    // Step 1: First confirmation
+    final firstConfirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Delete Account?',
+          style: GoogleFonts.montserrat(
+            fontWeight: FontWeight.w900,
+            color: Colors.red,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to permanently delete your account?',
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'This will:\n• Delete your profile and personal data\n• Remove all your bookings history\n• This action cannot be undone',
+              style: GoogleFonts.inter(
+                color: AppTheme.textGrey,
+                fontSize: 13,
+                height: 1.5,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancel', style: TextStyle(color: AppTheme.textGrey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade900,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+
+    if (firstConfirm != true) return;
+
+    // Step 2: Final confirmation
+    final secondConfirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Final Confirmation',
+          style: GoogleFonts.montserrat(
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+          ),
+        ),
+        content: Text(
+          'Your account ${_user?.phone ?? ''} will be permanently deleted. Type DELETE is not needed - just confirm.',
+          style: GoogleFonts.inter(color: AppTheme.textGrey),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancel', style: TextStyle(color: AppTheme.textGrey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('DELETE MY ACCOUNT'),
+          ),
+        ],
+      ),
+    );
+
+    if (secondConfirm != true) return;
+
+    if (!mounted) return;
+    setState(() => _isDeleting = true);
+
+    try {
+      // Call delete API - add this method in ApiService
+      await ApiService.deleteAccount();
+
+      if (!mounted) return;
+      setState(() => _isDeleting = false);
+
+      // Show success and logout
+      _showSnackBar('Account deleted successfully');
+
+      await ApiService.logout();
+      if (mounted) {
+        setState(() {
+          _isLoggedIn = false;
+          _user = null;
+          _subscriptions = [];
+        });
+        Navigator.pop(context); // go back if needed
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isDeleting = false);
+      _showSnackBar('Failed to delete account: ${e.toString()}');
+    }
+  }
+
   void _navigateToBookings() {
     Navigator.push(
       context,
@@ -259,7 +385,6 @@ class _ProfileScreenState extends State<ProfileScreen>
           SafeArea(
             child: Column(
               children: [
-                // Back button header
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: Row(
@@ -430,7 +555,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Header with Back Button
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -480,8 +604,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                       ],
                     ),
                     const SizedBox(height: 24),
-
-                    // User Card
                     ClipRRect(
                       borderRadius: BorderRadius.circular(24),
                       child: BackdropFilter(
@@ -552,7 +674,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                       ),
                     ),
                     const SizedBox(height: 28),
-
                     Text(
                       'MY SUBSCRIPTIONS',
                       style: GoogleFonts.montserrat(
@@ -563,16 +684,13 @@ class _ProfileScreenState extends State<ProfileScreen>
                       ),
                     ),
                     const SizedBox(height: 14),
-
                     if (_subscriptions.isEmpty)
                       _buildNoSubscriptions()
                     else
                       ..._subscriptions.map(
                         (sub) => _buildSubscriptionCard(sub),
                       ),
-
                     const SizedBox(height: 28),
-
                     Text(
                       'ACCOUNT',
                       style: GoogleFonts.montserrat(
@@ -600,9 +718,15 @@ class _ProfileScreenState extends State<ProfileScreen>
                       onTap: _handleLogout,
                       isDestructive: true,
                     ),
+                    const SizedBox(height: 10),
+                    // NEW DELETE ACCOUNT BUTTON FOR APPLE
+                    _buildActionTile(
+                      icon: Icons.delete_forever,
+                      title: _isDeleting ? 'Deleting...' : 'Delete Account',
+                      onTap: _isDeleting ? () {} : _handleDeleteAccount,
+                      isDestructive: true,
+                    ),
                     const SizedBox(height: 20),
-
-                    // Footer - Built by Smartinfra Solutions
                     Center(
                       child: Padding(
                         padding: const EdgeInsets.only(top: 16, bottom: 8),
